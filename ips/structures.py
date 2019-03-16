@@ -18,7 +18,7 @@ def try_float(value):
 def try_float_posi(value):
     v = try_float(value)
     if v < 0:
-        raise TypeError("Неположительное число в строгом приказе.")
+        raise TypeError("Non-positive number in an order.")
     return v
 
 
@@ -90,9 +90,9 @@ class Line:
     @staticmethod
     def encode(value):
         if not isinstance(value, int):
-            raise TypeError("Некорректный тип номера линии")
+            raise TypeError("Incorrect line number type")
         if not (1 <= value <= 4):
-            raise TypeError("Некорректный номер линии")
+            raise TypeError("Incorrect line number value")
         return value - 1
 
     @staticmethod
@@ -109,10 +109,10 @@ class Exchange:
     @staticmethod
     def encode(value):
         if not isinstance(value, int):
-            raise TypeError("Некорректный тип индекса биржи")
+            raise TypeError("Incorrect exchange type")
         out = Exchange.encode_values.get(value, None)
         if out is None:
-            raise TypeError("Некорректный индекс биржи")
+            raise TypeError("Incorrect exchange value")
         return out
 
     @staticmethod
@@ -134,7 +134,7 @@ class Order:
         return self.__data
 
     def __repr__(self):
-        return f"<неизвестный приказ {self.data}>"
+        return f"<unknown order {self.data}>"
 
 
 class CellOrder(Order):
@@ -145,7 +145,7 @@ class CellOrder(Order):
         self.power = power
 
     def __repr__(self):
-        return f"<приказ на аккумулятор, адрес {self.addr}, дельта {self.power} кВт⋅ч>"
+        return f"<cell order, address {self.addr}, delta {self.power} MWh>"
 
 
 class InfluenceOrder(Order):
@@ -156,7 +156,7 @@ class InfluenceOrder(Order):
         self.value = value
 
     def __repr__(self):
-        return f"<приказ на влияние, адрес {self.addr}, значение {self.value}>"
+        return f"<influence order, address {self.addr}, amount {self.value}>"
 
 
 class LineOrder(Order):
@@ -168,8 +168,8 @@ class LineOrder(Order):
         self.value = value
 
     def __repr__(self):
-        state = "включение" if self.value else "отключение"
-        return f"<приказ на линию, адрес {self.addr}, линия {self.line}, {state}>"
+        state = "turn on" if self.value else "turn off"
+        return f"<line order, address {self.addr}, line {self.line}, {state}>"
 
 
 class TradeOrder(Order):
@@ -180,7 +180,7 @@ class TradeOrder(Order):
         self.value = value
 
     def __repr__(self):
-        return f"<приказ на биржу, {self.value} кВт⋅ч через {self.exchange} ход(а/ов)>"
+        return f"<exchange order, {self.value} MWh in {self.exchange} move(s)>"
 
 
 class TradeOrderFactory:
@@ -248,7 +248,7 @@ class TradeEntry(namedtuple("TradeEntry", ["amount", "exchange", "issued", "owne
                           owner=Player.decode(data["owner"]))
 
     def __repr__(self):
-        return "<контракт на {} кВт⋅ч через {} ход(а)(ов) от игрока {}>".format(
+        return "<contract for {} MWh in {} move(s) from player {}>".format(
             self.amount, self.exchange, self.owner
         )
 
@@ -263,8 +263,8 @@ class Sun(ForecastedValue):
         return Sun(data[5], Quartile.from_json(data[:5]))
 
     def __repr__(self):
-        return "<{}, прогноз {} лк>".format(
-            "неизвестно" if self.value is None else (str(self.value) + " лк"),
+        return "<{}, forecast {} lux>".format(
+            "none" if self.value is None else (str(self.value) + " lux"),
             self.forecast,
         )
 
@@ -276,8 +276,8 @@ class Wind(ForecastedValue):
         return Wind(data[5], Quartile.from_json(data[:5]))
 
     def __repr__(self):
-        return "<{}, прогноз {} м/c>".format(
-            "неизвестно" if self.value is None else (str(self.value) + " м/c"),
+        return "<{}, forecast {} m/s>".format(
+            "none" if self.value is None else (str(self.value) + " m/s"),
             self.forecast,
         )
 
@@ -289,8 +289,8 @@ class Power(ForecastedValue):
         return Power(data[5], Quartile.from_json(data[:5]))
 
     def __repr__(self):
-        return "<{}, прогноз {} кВт⋅ч>".format(
-            "неизвестно" if self.value is None else (str(self.value) + " кВт⋅ч"),
+        return "<{}, forecast {} MWh>".format(
+            "none" if self.value is None else (str(self.value) + " MWh"),
             self.forecast,
         )
 
@@ -310,11 +310,11 @@ class TypicalClient:
 
     def describe(self):
         if self.is_consumer():
-            return (f"<{self.cls} {' '.join(self.addr)}, -{safe_last(self.power)} кВт⋅ч, "
-                    f"+{safe_last(self.profits)} ₽, -{safe_last(self.losses)} ₽>")
+            return (f"<{self.cls} {' '.join(self.addr)}, -{safe_last(self.power)} MWh, "
+                    f"+{safe_last(self.profits)} R, -{safe_last(self.losses)} R>")
         else:
-            return (f"<{self.cls} {' '.join(self.addr)}, +{safe_last(self.power)} кВт⋅ч, "
-                    f"+{safe_last(self.profits)} ₽, -{safe_last(self.losses)} ₽>")
+            return (f"<{self.cls} {' '.join(self.addr)}, +{safe_last(self.power)} MWh, "
+                    f"+{safe_last(self.profits)} R, -{safe_last(self.losses)} R>")
 
     def short(self):
         return f"<{self.cls} {' '.join(self.addr)}>"
@@ -332,23 +332,23 @@ class TypicalClient:
 
 
 class Solar(TypicalClient, Generator):
-    cls = "соляр"
+    cls = "solar"
 
 
 class Winder(TypicalClient, Generator):
-    cls = "ветряк"
+    cls = "winder"
 
 
 class House(TypicalClient, Consumer):
-    cls = "жилой дом"
+    cls = "house"
 
 
 class Factory(TypicalClient, Consumer):
-    cls = "завод"
+    cls = "factory"
 
 
 class Hospital(TypicalClient, Consumer):
-    cls = "больница"
+    cls = "hospital"
 
 
 class ClientFactory:
@@ -388,7 +388,7 @@ class Cell(Module):
         self.is_cell = True
 
     def __repr__(self):
-        return f"<аккумулятор, заряд {self.charge} кВт⋅ч>"
+        return f"<cell, charged to {self.charge} MWh>"
 
 
 class Transformer(Module):
@@ -396,7 +396,7 @@ class Transformer(Module):
         self.is_cell = False
 
     def __repr__(self):
-        return "<трансформатор>"
+        return "<transformer>"
 
 
 class Station:
@@ -419,10 +419,10 @@ class MainStation(Station):
         self.modules = [Module.decode(x) for x in modules_raw]
         self.cells = sum(1 for x in self.modules if isinstance(x, Cell))
         self.transformers = sum(1 for x in self.modules if isinstance(x, Transformer))
-        self.charge = sum(x.charge for x in self.modules if isinstance(x, Cell))
+        self.charge = sum(x.charge[-1] for x in self.modules if isinstance(x, Cell) and x.charge)
 
     def __repr__(self):
-        return f"<подстанция {self.addr} {self.modules}>"
+        return f"<main station {self.addr} {self.modules}>"
 
 
 class MiniStation(Station):
@@ -432,13 +432,14 @@ class MiniStation(Station):
         self.addr = addr
 
     def __repr__(self):
-        return f"<миниподстанция {self.addr}>"
+        return f"<mini station {self.addr}>"
 
 
 class Region:
 
     def __init__(self, data, parent):
         self.__parent = parent
+        self.online = data["online"]
         self.lines = [simple_line(l) for l in data["lines"]]
         self.clients = [ClientFactory.from_json(l) for l in data["clients"]]
 
@@ -469,7 +470,7 @@ class Region:
         return list(ans)
 
     def __repr__(self):
-        return "<энергорайон {} {}>".format([x.short() for x in self.clients], self.lines)
+        return "<region {} {}>".format([x.short() for x in self.clients], self.lines)
 
 
 class Powersystem:
@@ -533,17 +534,17 @@ class Powerstand:
 
     def humanize(self):
         return "\n".join([
-            "Погода:",
-            "\n".join(f"{i+1: >3} : солнце {short_fv(s)} лк, ветер {short_fv(w)} м/c"
+            "Weather:",
+            "\n".join(f"{i+1: >3} : sun {short_fv(s)} lux, wind {short_fv(w)} m/s"
                       for i, (s, w) in enumerate(zip(self.sun, self.wind))),
-            "Контракты:",
+            "Exchange:",
             "\n".join(map(repr, self.exchange)),
-            "Энергорайоны:",
+            "Regions:",
             "\n".join(map(repr, self.powersystem.data.items()))
         ])
 
     def __repr__(self):
-        return "<данные энергостенда>"
+        return "<powerstand data>"
 
 # TODO: больше сахара на биржу (фильтрация по типам?)
 # FIXME: надеюсь, никто не додумается менять поля в приказах. это ничего не изменит
