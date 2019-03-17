@@ -1,18 +1,24 @@
 from collections import namedtuple
 
 from ips import internals
-
+from ips.utils import warn_tb
 
 # FIXME: s/addr/address/g
 # FIXME: profits, losses, power, influence are lists!
+
+def try_str(value):
+    if not isinstance(value, str):
+        raise TypeError("Type " + value.__class__.__name__ +
+                        " is not a string.")
+    return value
 
 
 def try_float(value):
     try:
         return float(value)
     except TypeError:
-        raise TypeError("Тип " + value.__class__.__name__ +
-                        " не совместим с float.") from None
+        raise TypeError("Type " + value.__class__.__name__ +
+                        " is not float-compatible.")
 
 
 def try_float_posi(value):
@@ -91,15 +97,17 @@ class Line:
     def encode(value):
         if not isinstance(value, int):
             raise TypeError("Incorrect line number type")
-        if not (1 <= value <= 4):
+        if value == 0:
+           raise TypeError("Line 0 is service-only")
+        if not (1 <= value <= 3):
             raise TypeError("Incorrect line number value")
-        return value - 1
+        return value
 
     @staticmethod
     def decode(value):
         if not (0 <= value <= 3):
-            raise TypeError("Некорректный входной номер линии")
-        return value + 1
+            raise TypeError("Incorrect line number")
+        return value
 
 
 class Exchange:
@@ -140,7 +148,8 @@ class Order:
 class CellOrder(Order):
 
     def __init__(self, addr, power):
-        super().__init__({"type": "Cell", "target": addr, "amount": try_float(power)})
+        super().__init__({"type": "Cell", "target": try_str(addr),
+                          "amount": try_float(power)})
         self.addr = addr
         self.power = power
 
@@ -151,7 +160,8 @@ class CellOrder(Order):
 class InfluenceOrder(Order):
 
     def __init__(self, addr, value):
-        super().__init__({"type": "Influence", "target": addr, "amount": try_float_posi(value)})
+        super().__init__({"type": "Influence", "target": try_str(addr),
+                          "amount": try_float_posi(value)})
         self.addr = addr
         self.value = value
 
@@ -162,7 +172,8 @@ class InfluenceOrder(Order):
 class LineOrder(Order):
 
     def __init__(self, addr, line, value):
-        super().__init__({"type": "Line", "target": addr, "line": Line.encode(line), "state": bool(value)})
+        super().__init__({"type": "Line", "target": try_str(addr),
+                          "line": Line.encode(line), "state": bool(value)})
         self.addr = addr
         self.line = line
         self.value = value
@@ -185,6 +196,8 @@ class TradeOrder(Order):
 
 class TradeOrderFactory:
 
+    MAX_AMOUNT = 45
+
     def __init__(self, exchange, lazy):
         self.__exchange = exchange
         self.__lazy = lazy
@@ -193,21 +206,45 @@ class TradeOrderFactory:
         return order if self.__lazy else order.send()
 
     def buy(self, amount):
-        return self.__send(TradeOrder(self.__exchange, try_float_posi(amount)))
+        amount = try_float_posi(amount)
+        if amount > TradeOrderFactory.MAX_AMOUNT:
+            warn_tb(f"Request for power value more than {self.MAX_AMOUNT} MWh. Ignoring...", cut=None)
+            return
+        return self.__send(TradeOrder(self.__exchange, amount))
 
     def sell(self, amount):
-        return self.__send(TradeOrder(self.__exchange, -try_float_posi(amount)))
+        amount = try_float_posi(amount)
+        if amount > TradeOrderFactory.MAX_AMOUNT:
+            warn_tb(f"Request for power value more than {self.MAX_AMOUNT} MWh. Ignoring...", cut=None)
+            return
+        return self.__send(TradeOrder(self.__exchange, -amount))
 
     def contract(self, amount):
         # поздравляем, вы только что открыли антисахар на биржу
+        amount = try_float(amount)
+        if abs(amount) > TradeOrderFactory.MAX_AMOUNT:
+            warn_tb(f"Request for power value more than {self.MAX_AMOUNT} MWh. Ignoring...", cut=None)
+            return
         return self.__send(TradeOrder(self.__exchange, amount))
+
+
+class ZeroTradeOrderStub:
+    
+    def buy(self, amount):
+        warn_tb("Zero exchange orders are useless! Ignoring...", cut = None)
+
+    def sell(self, amount):
+        warn_tb("Zero exchange orders are useless! Ignoring...", cut = None)
+
+    def contract(self, amount):
+        warn_tb("Zero exchange orders are useless! Ignoring...", cut = None)
 
 
 class OrderFactory:
 
     def __init__(self, lazy=False):
         self.__lazy = lazy
-        self.trade0 = TradeOrderFactory(0, lazy)
+        self.trade0 = ZeroTradeOrderStub()
         self.trade1 = TradeOrderFactory(1, lazy)
         self.trade3 = TradeOrderFactory(3, lazy)
         self.trade10 = TradeOrderFactory(10, lazy)

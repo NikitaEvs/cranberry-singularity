@@ -1,0 +1,16 @@
+// The Round Table 
+digraph {
+	main [label="Main station"]
+	h7 [label="house h7"]
+	main -> h7 [constraint=false]
+	s7 [label="solar s7"]
+	h7 -> s7 [constraint=false]
+	f5f6 [label="factory f5f6"]
+	main -> f5f6 [constraint=false]
+	sA [label="solar sA"]
+	f5f6 -> sA [constraint=false]
+	a3 [label="windgen a3"]
+	main -> a3 [constraint=false]
+	h5 [label="house h5"]
+	a3 -> h5 [constraint=false]
+}

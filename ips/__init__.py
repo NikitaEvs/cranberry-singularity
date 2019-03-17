@@ -16,7 +16,7 @@ preflight_check()
 def init():
     data = get_psm()
     if data is None:
-        warn_tb("Получен пустой стенд!", cut=3)
+        warn_tb("An empty powerstand?!", cut=None)
         return None
     return Powerstand(data)
 
@@ -29,7 +29,7 @@ def exit_with(body):
 def call(name, body):
     error_text = call_children(name, body)
     if error_text is not None:
-        raise Exception("Не удалось вызвать скрипт. " + error_text)
+        raise Exception("Couldn't call script. " + error_text)
     return unlock_and_get_buffer()
 
 

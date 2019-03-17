@@ -2,6 +2,7 @@
 
 # Global import
 import matplotlib.pyplot as plt
+from graphviz import Digraph
 import json
 import csv
 import glob
@@ -12,7 +13,7 @@ from player import Player
 # Global variable
 configFile = '../config/map.json'
 path = '../csv/*.csv'
-newPath = '../csv/fc5.csv'
+newPath = '../csv/fc9.csv'
 playersList = []
 with open(configFile) as json_file:
     loads_map = json.load(json_file)
@@ -176,26 +177,39 @@ def simulation():
     input()
     while True:
         print('Step #', step)
-        step += 1
         print('Print lot address')
         current_lot = input()
-        if current_lot == 'oh':
-            break
-        print('Print desired cost')
-        current_cost = float(input())
-        player_old = copy.deepcopy(playersList[current_player - 1])
-        player_new = copy.deepcopy(playersList[current_player - 1])
-        player_new.loadList.append(Load(current_lot, current_cost))
-        generate_current_plot(player_old, player_new)
-        print('Theoretical/real plots on screen')
-        print('Print customer number')
-        customer = int(input())
-        print('Print real price')
-        price = float(input())
-        playersList[customer - 1].loadList.append(Load(current_lot, price))
-        print('All real plots on screen')
-        generate_plots()
-
+        # Stupid try-catch
+        try:
+            int(current_lot)
+            print('Invalid input')
+        except ValueError:
+            if current_lot == 'oh':
+                break
+            print('Print desired cost')
+            try:
+                current_cost_str = input()
+                if current_cost_str != 'oh':
+                    current_cost = float(current_cost_str)
+                    player_old = copy.deepcopy(playersList[current_player - 1])
+                    player_new = copy.deepcopy(playersList[current_player - 1])
+                    player_new.loadList.append(Load(current_lot, current_cost))
+                    generate_current_plot(player_old, player_new)
+                    print('Theoretical/real plots on screen')
+                else:
+                    # FIXME It's really necessary to generate new useless plots for working from console
+                    player_old = copy.deepcopy(playersList[current_player - 1])
+                    generate_current_plot(player_old, player_old)
+                print('Print customer number')
+                customer = int(input())
+                print('Print real price')
+                price = float(input())
+                playersList[customer - 1].loadList.append(Load(current_lot, price))
+                print('All real plots on screen')
+                generate_plots()
+                step += 1
+            except ValueError:
+                print('Invalid input')
     our_player = playersList[current_player-1]
     our_player.serialize()
     schema = [[], [], []]
@@ -203,18 +217,18 @@ def simulation():
     print('YOUR LOAD LIST')
     for load in our_player.loadList:
         print('Load type:', load.type, 'load address:', load.address, 'load max power', load.max_power)
-        # TODO arrr (NTI)
+        # TODO arrr. It's not error because we have new rule for hospital
         if load.type == 'hospitals':
             new_power_0 = schema_power[0] + load.max_power/2
             new_power_1 = schema_power[1] + load.max_power/2
             new_power_2 = schema_power[2] + load.max_power/2
-            if new_power_0 < 35 and new_power_1 < 35:
+            if new_power_0 < 35 and new_power_1 < 20:
                 schema[0].append(load)
                 schema_power[0] += load.max_power/2
-            elif new_power_1 < 35 and new_power_2 < 35:
+            elif new_power_1 < 35 and new_power_2 < 20:
                 schema[1].append(load)
                 schema_power[1] += load.max_power/2
-            elif new_power_0 < 35 and new_power_2 < 35:
+            elif new_power_0 < 35 and new_power_2 < 20:
                 schema[2].append(load)
                 schema_power[2] += load.max_power/2
             else:
@@ -239,13 +253,13 @@ def simulation():
             new_power_0 = schema_power[0] + load.max_power
             new_power_1 = schema_power[1] + load.max_power
             new_power_2 = schema_power[2] + load.max_power
-            if new_power_0 < 35:
+            if new_power_0 < 20:
                 schema[0].append(load)
                 schema_power[0] += load.max_power
-            elif new_power_1 < 35:
+            elif new_power_1 < 20:
                 schema[1].append(load)
                 schema_power[1] += load.max_power
-            elif new_power_2 < 35:
+            elif new_power_2 < 20:
                 schema[2].append(load)
                 schema_power[2] += load.max_power
             else:
@@ -262,10 +276,22 @@ def simulation():
                     schema_power[2] += load.max_power
 
     print('Schema example:')
-    for i in schema:
+    dot = Digraph(comment='The Round Table ')
+    dot.node('main', 'Main station')
+    for line in schema:
         print('New line:')
-        for a in i:
-            print(a.type, a.address)
+        if len(line) > 0:
+            last_client = line[0]
+            dot.node(last_client.address, last_client.type + ' ' + last_client.address)
+            dot.edge('main', last_client.address, constraint='false')
+            print(last_client.type, last_client.address)
+            for i in range(1, len(line)):
+                print(line[i].type, line[i].address)
+                dot.node(line[i].address, line[i].type + ' ' + line[i].address)
+                dot.edge(last_client.address, line[i].address, constraint='false')
+                last_client = line[i]
+    dot.render('../graph/auction.gv', view=True)
+
 
 
 parse_csv_new()

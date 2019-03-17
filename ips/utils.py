@@ -3,7 +3,7 @@ import traceback
 
 
 def warn_tb(error, warning=False, cut=2, file=sys.stderr):
-    level = "Предупреждение" if warning else "Ошибка"
+    level = "Warning" if warning else "Error"
     stack = (
         traceback.extract_stack()[:-cut]
         if cut

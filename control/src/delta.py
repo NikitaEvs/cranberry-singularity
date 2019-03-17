@@ -4,10 +4,11 @@ import ips
 # Global variables
 mainAddress = 'M7'
 systemPower = []  # Power consumption for 10 days
+countOfStep = 50
 
 
 # Debug
-ips.debug_psm_file("../common/state.json")
+# ips.debug_psm_file("../common/state.json")
 
 psm = ips.init()
 
